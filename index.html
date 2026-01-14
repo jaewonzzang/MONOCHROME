@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONOCHROME: UNSEEN</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@200;300;400&display=swap');
+        
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #050505; 
+            font-family: 'Inter', sans-serif; 
+        }
+        
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
+            background-color: rgba(255, 255, 255, 0.9); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 20;
+            box-shadow: 0 0 4px white;
+        }
+
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; font-size: 20px; pointer-events: none; z-index: 10; text-align: center;
+            display: none;
+        }
+        
+        #blocker {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%);
+            z-index: 5;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            flex-direction: column;
+            color: white; 
+            text-align: center;
+            animation: fadeIn 1.5s ease-in;
+        }
+        
+        /* 엔딩 화면 스타일 추가 */
+        #ending {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #000000 0%, #050505 50%, #000000 100%);
+            z-index: 100;
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            flex-direction: column;
+            color: white; 
+            text-align: center;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+        
+        #ending.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        #ending-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeInText 2s ease-in 0.5s forwards;
+        }
+        
+        #ending-message {
+            font-size: 16px;
+            letter-spacing: 4px;
+            color: #666;
+            font-weight: 200;
+            opacity: 0;
+            animation: fadeInText 2s ease-in 1.5s forwards;
+        }
+        
+        @keyframes fadeInText {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+        }
+        
+        #title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 64px;
+            font-weight: 300;
+            letter-spacing: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #ffffff 0%, #888888 50%, #ffffff 100%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        #subtitle {
+            font-size: 14px;
+            letter-spacing: 6px;
+            color: #666;
+            margin-bottom: 60px;
+            font-weight: 200;
+        }
+        
+        #instructions { 
+            font-size: 18px;
+            font-weight: 300;
+            margin-bottom: 20px; 
+            cursor: pointer;
+            padding: 15px 40px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            letter-spacing: 3px;
+        }
+        
+        #instructions:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .sub-text { 
+            font-size: 13px; 
+            color: #777; 
+            line-height: 1.8;
+            font-weight: 300;
+            max-width: 500px;
+        }
+        
+        .divider {
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #666, transparent);
+            margin: 30px 0;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="crosshair"></div>
+    <div id="loading">리소스 로딩 중...<br><span style="font-size:12px; color:#888;">(잠시만 기다려주세요)</span></div>
+    
+    <div id="blocker">
+        <div id="title">MONOCHROME</div>
+        <div id="subtitle">UNSEEN</div>
+        <div class="divider"></div>
+        <div id="instructions">ENTER THE VOID</div>
+        <div class="divider"></div>
+        <div class="sub-text">
+            W, A, S, D로 이동하고 마우스로 둘러보세요.<br>
+            화면 중앙의 점을 물체에 대면 본질이 드러납니다.
+        </div>
+    </div>
+
+    <!-- 엔딩 화면 추가 -->
+    <div id="ending">
+        <div id="ending-title">여정이 끝났습니다</div>
+        <div class="divider"></div>
+        <div id="ending-message">       20221010 김재원</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { Octree } from 'three/addons/math/Octree.js';
+        import { Capsule } from 'three/addons/math/Capsule.js';
+
+        // =====================================================================
+        // 🔧 [설정 구역]
+        // =====================================================================
+
+        const FOG_MODE = 'SHOW'; // 'DEV' | 'SHOW'
+
+        const exhibitions = [
+            { file: 'boat.glb', scale: 30.0, x: 1.0, y: 2.0, z: -40, sound: 'water.mp3', volume: 3.0, type: 'boat' },
+            { file: 'shells_stones.glb', scale: 4.0, x: -8, y: 0, z: -45, sound: null, type: 'normal' },
+            { file: 'microphone.glb', scale: 1.0, x: 0, y: 0, z: -145, sound: 'giant.mp3', volume: 4.0, type: 'normal' },
+            { file: 'toy_robot.glb', scale: 0.8, x: 2, y: 0.8, z: -143.5, sound: null, type: 'normal' },
+            { file: 'baroque_dining_table.glb', scale: 1.7, x: -10, y: 117, z: -230, sound: 'party.mp3', volume: 2.0, type: 'normal', soundY: 1.5 },
+            { file: 'wine_glass.glb', scale: 0.4, x: 0, y: 4.0, z: -315, sound: 'pouring.mp3', volume: 3.0, type: 'drink' },
+            { file: 'magic_mirror.glb', scale: 0.025, x: 0, y: 0, z: -400, sound: null, type: 'mirror_frame' },
+            { file: 'man_body.glb', scale: 1.5, x: 0, y: 0, z: -400, rotationY: null, sound: null, type: 'mirror_reflection' },
+            { file: 'sculpture.glb', scale: 9.0, x: 8, y: -5, z: -195, sound: null, type: 'normal' },
+            { file: 'creepy_doll.glb', scale: 6.0, x: -8, y: 0, z: -345, sound: null, type: 'normal' },
+            { file: 'doll_1.glb', scale: 6.0, x: -8, y: 0, z: -227.5, sound: null, type: 'normal' },
+        ];
+
+        // --- 1. 씬 & 환경 설정 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505); 
+        if (FOG_MODE === 'DEV') {
+            scene.fog = new THREE.Fog(0x050505, 2000, 2000);
+        } else {
+            scene.fog = new THREE.FogExp2(0x050505, 0.004);
+        }
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.7, 5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. 공간 (바닥 & 벽) ---
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1.0 });
+        
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(50, 1500), wallMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.z = -600;
+        scene.add(floor);
+
+        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1500, 100), wallMat);
+        leftWall.position.set(-25, 50, -600);
+        leftWall.rotation.y = Math.PI / 2;
+        scene.add(leftWall);
+
+        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1500, 100), wallMat);
+        rightWall.position.set(25, 50, -600);
+        rightWall.rotation.y = -Math.PI / 2;
+        scene.add(rightWall);
+
+        // --- 3. 오디오 ---
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+        const audioLoader = new THREE.AudioLoader();
+
+        const backgroundSound = new THREE.Audio(listener);
+        audioLoader.load('./sounds/wind.mp3', function(buffer) {
+            backgroundSound.setBuffer(buffer);
+            backgroundSound.setLoop(true);
+            backgroundSound.setVolume(0.3);
+        });
+
+        // --- 4. 쉐이더 템플릿 ---
+        const globalTimeUniform = { value: 0 };
+
+        function createShaderMaterial() {
+            return new THREE.ShaderMaterial({
+                uniforms: {
+                    uFocusPoint: { value: new THREE.Vector3(9999, 9999, 9999) },
+                    uTime: globalTimeUniform
+                },
+                vertexShader: `
+                    uniform float uTime;
+                    varying vec3 vPosition;
+                    varying vec3 vNormal;
+                    
+                    void main() {
+                        vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                        vNormal = normalize(normalMatrix * normal);
+                        
+                        vec3 pos = position;
+                        float noise = sin(pos.y * 5.0 + uTime * 2.0) * 0.05;
+                        pos.x += noise;
+                        
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uFocusPoint;
+                    varying vec3 vPosition;
+                    varying vec3 vNormal;
+
+                    void main() {
+                        vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));
+                        float diff = max(dot(vNormal, lightDir), 0.0);
+
+                        float dist = distance(vPosition, uFocusPoint);
+                        float t = smoothstep(4.0, 12.0, dist);
+                        float reveal = 1.0 - t;
+
+                        vec3 obscureColor = vec3(0.08) * (diff + 0.15);
+                        vec3 revealColor  = vec3(0.7)  * (diff + 0.2);
+
+                        vec3 finalColor = mix(obscureColor, revealColor, clamp(reveal, 0.0, 1.0));
+
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `
+            });
+        }
+        
+        // ASCII 쉐이더 (거울 반사용)
+        function createASCIIMaterial() {
+            return new THREE.ShaderMaterial({
+                uniforms: {
+                    uFocusPoint: { value: new THREE.Vector3(9999, 9999, 9999) },
+                    uTime: globalTimeUniform
+                },
+                transparent: true,
+                vertexShader: `
+                    varying vec3 vPosition;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uFocusPoint;
+                    uniform float uTime;
+                    varying vec3 vPosition;
+                    varying vec2 vUv;
+
+                    float random(vec2 st) {
+                        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                    }
+
+                    void main() {
+                        float dist = distance(vPosition, uFocusPoint);
+                        float reveal = 1.0 - smoothstep(4.0, 12.0, dist);
+
+                        // ASCII 그리드
+                        vec2 grid = floor(vUv * 40.0);
+                        float noise = random(grid + floor(uTime * 2.0));
+                        
+                        // 0과 1 표시
+                        float ascii = step(0.5, noise);
+                        vec3 color = vec3(0.0, 1.0, 0.3) * ascii;
+                        
+                        float opacity = reveal * 0.9;
+                        
+                        gl_FragColor = vec4(color, opacity);
+                    }
+                `
+            });
+        }
+
+        // --- 5. 모델 로드 & 충돌 시스템 ---
+        const gltfLoader = new GLTFLoader();
+        const worldOctree = new Octree();
+        const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 5), new THREE.Vector3(0, 1.35, 5), 0.35);
+        
+        const interactableObjects = [];
+        const raycastTargets = [];
+        
+        const playerVelocity = new THREE.Vector3();
+        const playerDirection = new THREE.Vector3();
+        let playerOnFloor = false;
+
+        let previousFocusedObject = null;
+
+        // 보트 인터랙션
+        let isOnBoat = false;
+        let boatObject = null;
+        let boatTargetZ = -80;
+        let boatSpeed = 10;
+        // [수정 2] 보트 탑승 중 blocker 표시 방지를 위한 플래그
+        let boatRideInProgress = false;
+        // [수정 2] 보트 탑승 완료 여부 (1회만 탑승 가능)
+        let hasUsedBoat = false;
+
+        // 파티클 & 사운드
+        let particlesVisible = false;
+        let drinkSound = null;
+        let pouringSound = null;
+        // [수정 3] 초기 pouring 사운드 재생 여부
+        let pouringInitialized = false;
+
+        // [수정 1] 게임 종료 상태
+        let gameEnded = false;
+
+        // 로딩 상태
+        let assetsLoaded = false;
+        let loadCount = 0;
+        const totalAssets = exhibitions.length;
+
+        worldOctree.fromGraphNode(floor);
+        worldOctree.fromGraphNode(leftWall);
+        worldOctree.fromGraphNode(rightWall);
+
+        exhibitions.forEach((data) => {
+        gltfLoader.load(`./models/${data.file}`, (gltf) => {
+            const model = gltf.scene;
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    if (data.type === 'mirror_reflection') {
+                        child.material = createASCIIMaterial();
+                    } else {
+                        child.material = createShaderMaterial();
+                    }
+                    raycastTargets.push(child);
+                }
+            });
+
+            model.position.set(data.x, data.y, data.z);
+            model.scale.set(data.scale, data.scale, data.scale);
+            if(data.rotationY) model.rotation.y = data.rotationY;
+            scene.add(model);
+
+            worldOctree.fromGraphNode(model);
+            
+            model.userData = { 
+                type: data.type, 
+                soundRef: null, 
+                baseVolume: data.volume || 1 
+            };
+            interactableObjects.push(model);
+
+            if (data.type === 'boat') {
+                boatObject = model;
+            }
+
+            // [수정] 사운드 처리 - soundY가 있으면 별도 앵커 사용
+            if (data.sound) {
+                const sound = new THREE.PositionalAudio(listener);
+                audioLoader.load(`./sounds/${data.sound}`, (buffer) => {
+                    sound.setBuffer(buffer);
+                    sound.setLoop(true);
+                    sound.setVolume(data.volume);
+                    sound.setRefDistance(10); 
+                    sound.setRolloffFactor(3);
+                    if (data.type !== 'drink') {
+                        sound.play();
+                    } else {
+                        pouringSound = sound;
+                    }
+                });
+                
+                // soundY가 지정된 경우: 별도의 오브젝트를 만들어 해당 높이에 소리 배치
+                if (data.soundY !== undefined) {
+                    const audioAnchor = new THREE.Object3D();
+                    audioAnchor.position.set(data.x, data.soundY, data.z);
+                    scene.add(audioAnchor);
+                    audioAnchor.add(sound);
+                } else {
+                    // 기본: 모델에 직접 소리 부착
+                    model.add(sound);
+                }
+                
+                model.userData.soundRef = sound;
+            }
+
+            if (data.type === 'drink') {
+                createParticles(data.x, data.y + 2, data.z);
+                drinkSound = new THREE.PositionalAudio(listener);
+                audioLoader.load('./sounds/drink.mp3', (buffer) => {
+                    drinkSound.setBuffer(buffer);
+                    drinkSound.setLoop(true);
+                    drinkSound.setVolume(data.volume);
+                    drinkSound.setRefDistance(10);
+                    drinkSound.setRolloffFactor(3);
+                });
+                model.add(drinkSound);
+            }
+
+            loadCount++;
+            if (loadCount >= totalAssets) {
+                assetsLoaded = true;
+            }
+
+        }, undefined, console.error);
+    });
+
+        let particles;
+        function createParticles(x, y, z) {
+            const count = 1000;
+            const pos = new Float32Array(count * 3);
+            for(let i=0; i<count*3; i++) pos[i] = (Math.random()-0.5)*5;
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.5 });
+            particles = new THREE.Points(geo, mat);
+            particles.position.set(x, y, z);
+            particles.visible = false;
+            scene.add(particles);
+        }
+
+        // [수정 1] 엔딩 화면 표시 함수
+        function showEnding() {
+            gameEnded = true;
+            controls.unlock();
+            
+            // 모든 사운드 페이드 아웃
+            if (backgroundSound && backgroundSound.isPlaying) {
+                backgroundSound.stop();
+            }
+            
+            // crosshair 숨기기
+            document.getElementById('crosshair').style.display = 'none';
+            document.getElementById('blocker').style.display = 'none';
+            
+            const ending = document.getElementById('ending');
+            ending.style.display = 'flex';
+            
+            // 약간의 딜레이 후 opacity 적용 (transition이 작동하도록)
+            setTimeout(() => {
+                ending.classList.add('show');
+            }, 50);
+        }
+
+        // --- 6. 컨트롤 ---
+        const controls = new PointerLockControls(camera, document.body);
+        const instructions = document.getElementById('instructions');
+        
+        instructions.addEventListener('click', () => {
+            // [수정 1] 게임 종료 상태면 무시
+            if (gameEnded) return;
+            
+            if (!assetsLoaded) {
+                document.getElementById('loading').style.display = 'block';
+                const checkLoading = setInterval(() => {
+                    if (assetsLoaded) {
+                        clearInterval(checkLoading);
+                        document.getElementById('loading').style.display = 'none';
+                        controls.lock();
+                        if(backgroundSound.buffer && !backgroundSound.isPlaying) backgroundSound.play();
+                    }
+                }, 100);
+            } else {
+                controls.lock();
+                if(backgroundSound.buffer && !backgroundSound.isPlaying) backgroundSound.play();
+            }
+        });
+        
+        controls.addEventListener('lock', () => { 
+            // [수정 1] 게임 종료 상태면 무시
+            if (gameEnded) return;
+            document.getElementById('blocker').style.display = 'none'; 
+        });
+        
+        controls.addEventListener('unlock', () => { 
+            // [수정 1] 게임 종료 상태면 blocker 표시 안 함
+            if (gameEnded) return;
+            // [수정 2] 보트 탑승 중이면 blocker 표시 안 함
+            if (boatRideInProgress) return;
+            document.getElementById('blocker').style.display = 'flex'; 
+        });
+
+        const keyState = {};
+        document.addEventListener('keydown', (e) => { 
+            keyState[e.code] = true;
+        });
+        document.addEventListener('keyup', (e) => { keyState[e.code] = false; });
+
+        // 클릭 이벤트 (보트 탑승 & 거울 엔딩)
+        document.addEventListener('click', (e) => {
+            // [수정 1] 게임 종료 상태면 무시
+            if (gameEnded) return;
+            
+            // [수정 1] 거울 속 인물 클릭 시 엔딩
+            if (controls.isLocked && currentFocusedObject && 
+                currentFocusedObject.userData.type === 'mirror_reflection') {
+                showEnding();
+                return;
+            }
+            
+            // [수정 2] 보트 탑승 (1회만 가능)
+            if (controls.isLocked && currentFocusedObject && 
+                currentFocusedObject.userData.type === 'boat' && 
+                !isOnBoat && !hasUsedBoat) {
+                isOnBoat = true;
+                boatRideInProgress = true; // blocker 방지 플래그 설정
+                hasUsedBoat = true; // 보트 사용 완료
+                controls.unlock();
+            }
+        });
+
+        const raycaster = new THREE.Raycaster();
+        const center = new THREE.Vector2(0, 0);
+        let prevTime = performance.now();
+        let currentFocusedObject = null;
+
+        function playerCollisions() {
+            const result = worldOctree.capsuleIntersect(playerCollider);
+            playerOnFloor = false;
+
+            if (result) {
+                playerOnFloor = result.normal.y > 0;
+                if (!playerOnFloor) {
+                    playerVelocity.addScaledVector(result.normal, -result.normal.dot(playerVelocity));
+                }
+                playerCollider.translate(result.normal.multiplyScalar(result.depth));
+            }
+        }
+
+        function updatePlayer(deltaTime) {
+            if (isOnBoat && boatObject) {
+                // 보트 자동 이동
+                if (boatObject.position.z > boatTargetZ) {
+                    boatObject.position.z -= deltaTime * boatSpeed;
+                    
+                    // 카메라를 보트에 고정
+                    camera.position.set(
+                        boatObject.position.x,
+                        boatObject.position.y + 4,
+                        boatObject.position.z + 8
+                    );
+                } else {
+                    // 목표 지점 도착 - 자동 하차
+                    isOnBoat = false;
+                    boatRideInProgress = false; // [수정 2] blocker 방지 플래그 해제
+                    playerCollider.start.set(camera.position.x, camera.position.y - 1, camera.position.z);
+                    playerCollider.end.set(camera.position.x, camera.position.y, camera.position.z);
+                    controls.lock();
+                }
+                return;
+            }
+
+            let damping = Math.exp(-4 * deltaTime) - 1;
+            
+            if (!playerOnFloor) {
+                playerVelocity.y -= 9.8 * deltaTime;
+                damping *= 0.1;
+            }
+
+            playerVelocity.addScaledVector(playerVelocity, damping);
+            const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime);
+            playerCollider.translate(deltaPosition);
+            playerCollisions();
+            camera.position.copy(playerCollider.end);
+        }
+
+        function getForwardVector() {
+            camera.getWorldDirection(playerDirection);
+            playerDirection.y = 0;
+            playerDirection.normalize();
+            return playerDirection;
+        }
+
+        function getSideVector() {
+            camera.getWorldDirection(playerDirection);
+            playerDirection.y = 0;
+            playerDirection.normalize();
+            playerDirection.cross(camera.up);
+            return playerDirection;
+        }
+
+        function controls_update(deltaTime) {
+            if (isOnBoat) return;
+            
+            const speedDelta = deltaTime * 25;
+            
+            if (keyState['KeyW'] || keyState['ArrowUp']) {
+                playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
+            }
+            if (keyState['KeyS'] || keyState['ArrowDown']) {
+                playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
+            }
+            if (keyState['KeyA'] || keyState['ArrowLeft']) {
+                playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
+            }
+            if (keyState['KeyD'] || keyState['ArrowRight']) {
+                playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
+            }
+        }
+
+        function resetFocus(rootObj) {
+            if (!rootObj) return;
+            
+            rootObj.traverse(child => {
+                if (child.isMesh) {
+                    if (child.material.uniforms && child.material.uniforms.uFocusPoint) {
+                        child.material.uniforms.uFocusPoint.value.set(9999, 9999, 9999);
+                    }
+                }
+            });
+        }
+
+        function applyFocus(rootObj, focusPoint) {
+            if (!rootObj) return;
+            
+            rootObj.traverse(child => {
+                if (child.isMesh) {
+                    if (child.material.uniforms && child.material.uniforms.uFocusPoint) {
+                        child.material.uniforms.uFocusPoint.value.copy(focusPoint);
+                    }
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // [수정 1] 게임 종료 시 렌더링 중단
+            if (gameEnded) return;
+            
+            const time = performance.now();
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
+            prevTime = time;
+
+            if (controls.isLocked) {
+                controls_update(delta);
+                updatePlayer(delta);
+            } else if (isOnBoat) {
+                updatePlayer(delta);
+            }
+
+            globalTimeUniform.value = time * 0.001;
+
+            // [수정 3] 초기 pouring 사운드 재생 (한 번만)
+            if (!pouringInitialized && pouringSound && pouringSound.buffer) {
+                pouringSound.play();
+                pouringInitialized = true;
+            }
+
+            raycaster.setFromCamera(center, camera);
+            const intersects = raycaster.intersectObjects(raycastTargets, false);
+            
+            currentFocusedObject = null;
+
+            if (intersects.length > 0 && intersects[0].distance < 15) {
+                const hitObj = intersects[0].object;
+                let rootObj = hitObj;
+                while(rootObj.parent && rootObj.parent !== scene) rootObj = rootObj.parent;
+                currentFocusedObject = rootObj;
+
+                // [수정 3] drink 타입 인터랙션 - 로직 수정
+                // 바라볼 때: 파티클 표시 + drink 사운드 재생 (마시는 중)
+                // 안 바라볼 때: pouring 사운드 재생 (따르는 중)
+                if (currentFocusedObject.userData.type === 'drink') {
+                    if (!particlesVisible) {
+                        particlesVisible = true;
+                        if (particles) particles.visible = true;
+                        
+                        // pouring 중지, drink 재생
+                        if (pouringSound && pouringSound.isPlaying) {
+                            pouringSound.stop();
+                        }
+                        if (drinkSound && drinkSound.buffer && !drinkSound.isPlaying) {
+                            drinkSound.play();
+                        }
+                    }
+                }
+            } else {
+                // [수정 3] 와인잔에서 시선을 뗐을 때
+                if (particlesVisible) {
+                    particlesVisible = false;
+                    if (particles) particles.visible = false;
+                    
+                    // drink 중지, pouring 재생
+                    if (drinkSound && drinkSound.isPlaying) {
+                        drinkSound.stop();
+                    }
+                    if (pouringSound && pouringSound.buffer && !pouringSound.isPlaying) {
+                        pouringSound.play();
+                    }
+                }
+            }
+
+            if (currentFocusedObject !== previousFocusedObject) {
+                resetFocus(previousFocusedObject);
+
+                if (currentFocusedObject && intersects.length > 0) {
+                    applyFocus(currentFocusedObject, intersects[0].point);
+                }
+
+                previousFocusedObject = currentFocusedObject;
+            } else if (currentFocusedObject && intersects.length > 0) {
+                applyFocus(currentFocusedObject, intersects[0].point);
+            }
+
+            if (particles && particlesVisible) {
+                const positions = particles.geometry.attributes.position.array;
+                for(let i=1; i<positions.length; i+=3) {
+                    positions[i] += delta * 2;
+                    if(positions[i] > 5) positions[i] = 0;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
